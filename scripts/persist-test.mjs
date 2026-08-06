@@ -3,12 +3,16 @@
 //   2. （kojo 側が page.reload() する）
 //   3. verify(page) — リロード後の復元状態を検証する。不一致なら throw すること
 // page は Playwright の Page。セレクタはこのアプリの実装に合わせて書き換える。
-// このファイルはレベル制約で指示された場合のみ書き換える（L0 では実行されない）
+
+const SAMPLE = "persist-gate: quick-notes sample";
 
 export async function scenario(page) {
-  throw new Error("builder が scenario をこのアプリ固有の操作に書き換えてください");
+  await page.locator("textarea").fill(SAMPLE);
 }
 
 export async function verify(page) {
-  throw new Error("builder が verify をこのアプリ固有の検証に書き換えてください");
+  const value = await page.locator("textarea").inputValue();
+  if (value !== SAMPLE) {
+    throw new Error(`expected ${JSON.stringify(SAMPLE)}, got ${JSON.stringify(value)}`);
+  }
 }
