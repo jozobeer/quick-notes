@@ -4,6 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>クイックメモ</title>
+  <meta name="description" content="開いた瞬間に書き始められるブラウザメモ帳。入力のたびに自動保存され、リロード後も内容が残ります。全消去ボタンで表示と保存データをまとめて消せます。">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "クイックメモ",
+    "description": "開いた瞬間に書き始められるブラウザメモ帳。入力のたびに自動保存され、リロード後も内容が残ります。全消去ボタンで表示と保存データをまとめて消せます。",
+    "url": "https://quick-notes.jozo.beer/",
+    "applicationCategory": "UtilitiesApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "JPY"
+    }
+  }
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='3' width='20' height='26' rx='2' fill='%232a2f38' stroke='%237a8a9a' stroke-width='1.5'/%3E%3Cpath d='M10 9h12M10 14h12M10 19h8' stroke='%239ab0c4' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M20 22l5-5 2.5 2.5-5 5H20v-2.5z' fill='%23c9a66b' stroke='%23a8844a' stroke-width='.8'/%3E%3C/svg%3E">
   <style>
     :root {
@@ -20,14 +36,14 @@
     * { box-sizing: border-box; }
 
     html, body {
-      height: 100%;
+      min-height: 100%;
       margin: 0;
     }
 
     body {
       display: flex;
       flex-direction: column;
-      min-height: 100%;
+      min-height: 100dvh;
       background:
         radial-gradient(ellipse at top, #252a34 0%, transparent 55%),
         linear-gradient(160deg, #171a20 0%, #1a1d23 50%, #14171c 100%);
@@ -39,7 +55,7 @@
       display: flex;
       flex-direction: column;
       flex: 1;
-      min-height: 0;
+      min-height: calc(100dvh - 3rem);
       max-width: 56rem;
       width: 100%;
       margin: 0 auto;
@@ -122,6 +138,47 @@
       color: #5c6573;
     }
 
+    .help {
+      max-width: 56rem;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1rem 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+
+    .help h2 {
+      margin: 0 0 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .help section + section {
+      margin-top: 1.5rem;
+    }
+
+    .help ol {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+
+    .help dt {
+      margin-top: 0.75rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .help dt:first-of-type {
+      margin-top: 0;
+    }
+
+    .help dd {
+      margin: 0.2rem 0 0;
+    }
+
     footer {
       margin-top: 3rem;
       text-align: center;
@@ -146,6 +203,30 @@
       </div>
     </header>
     <textarea id="note" placeholder="思いついたことをそのまま書く…" aria-label="メモ"></textarea>
+  </div>
+  <div class="help">
+    <section id="how-to">
+      <h2>使い方</h2>
+      <ol>
+        <li>ページを開くと入力欄にフォーカスが当たるので、そのまま書き始めます。</li>
+        <li>入力するたびに、このブラウザへ自動保存されます。保存ボタンはありません。</li>
+        <li>リロードや再訪問をしても、直前の内容が戻ります。</li>
+        <li>「全消去」を押すと、表示と保存データがまとめて消えます。</li>
+      </ol>
+    </section>
+    <section id="faq">
+      <h2>FAQ</h2>
+      <dl>
+        <dt>保存ボタンはどこにありますか？</dt>
+        <dd>ありません。入力のたびに自動で保存されます。</dd>
+        <dt>メモはどこに保存されますか？</dt>
+        <dd>このブラウザの localStorage です。サーバには送られません。</dd>
+        <dt>別の端末やブラウザと同期されますか？</dt>
+        <dd>されません。保存はこの端末のこのブラウザだけです。</dd>
+        <dt>全消去したメモは戻せますか？</dt>
+        <dd>戻せません。消す前に、必要な内容を控えてください。</dd>
+      </dl>
+    </section>
   </div>
   <footer>
     <a href="https://apps.jozo.beer">apps.jozo.beer</a>

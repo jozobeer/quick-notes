@@ -59,3 +59,62 @@ test("AC5: 全消去後のリロードでも内容は復活しない", async ({ 
   await page.reload();
   await expect(page.locator("textarea")).toHaveValue("");
 });
+
+test("SEO: meta description があり空でない", async ({ page }) => {
+  await page.goto(APP_URL);
+  const description = page.locator('meta[name="description"]');
+  await expect(description).toHaveCount(1);
+  const content = await description.getAttribute("content");
+  expect(content?.trim()).toBeTruthy();
+});
+
+test("SEO: JSON-LD に WebApplication の必須フィールドがある", async ({ page }) => {
+  await page.goto(APP_URL);
+  const raw = await page.locator('script[type="application/ld+json"]').evaluateAll(
+    (scripts) => scripts.map((el) => el.textContent ?? ""),
+  );
+  expect(raw.length).toBeGreaterThan(0);
+
+  const app = raw
+    .flatMap((text) => {
+      try {
+        return [JSON.parse(text) as unknown];
+      } catch {
+        return [];
+      }
+    })
+    .flatMap(collectJsonLdNodes)
+    .find(isWebApplication);
+
+  expect(app).toBeDefined();
+  expect(typeof app?.name).toBe("string");
+  expect(String(app?.name).trim()).toBeTruthy();
+  expect(typeof app?.description).toBe("string");
+  expect(String(app?.description).trim()).toBeTruthy();
+  expect(typeof app?.url).toBe("string");
+  expect(String(app?.url).trim()).toBeTruthy();
+  expect(typeof app?.applicationCategory).toBe("string");
+  expect(String(app?.applicationCategory).trim()).toBeTruthy();
+  const offers = app?.offers as { price?: unknown } | undefined;
+  expect(String(offers?.price)).toBe("0");
+});
+
+test("SEO: 使い方と FAQ のセクションがある", async ({ page }) => {
+  await page.goto(APP_URL);
+  await expect(page.getByRole("heading", { name: "使い方" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FAQ" })).toBeVisible();
+});
+
+function collectJsonLdNodes(node: unknown): Record<string, unknown>[] {
+  if (Array.isArray(node)) return node.flatMap(collectJsonLdNodes);
+  if (!node || typeof node !== "object") return [];
+  const obj = node as Record<string, unknown>;
+  const nested = obj["@graph"] != null ? collectJsonLdNodes(obj["@graph"]) : [];
+  return [obj, ...nested];
+}
+
+function isWebApplication(node: Record<string, unknown>): boolean {
+  const type = node["@type"];
+  const types = Array.isArray(type) ? type : [type];
+  return types.includes("WebApplication");
+}
