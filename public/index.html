@@ -96,7 +96,8 @@
       opacity: 1;
     }
 
-    #clear {
+    #clear,
+    #undo-clear {
       appearance: none;
       border: 1px solid var(--border);
       background: transparent;
@@ -111,6 +112,14 @@
     #clear:hover {
       color: var(--danger);
       border-color: var(--danger);
+    }
+
+    #undo-clear {
+      color: var(--accent);
+    }
+
+    #undo-clear:hover {
+      border-color: var(--accent);
     }
 
     #note {
@@ -199,6 +208,7 @@
       <h1>クイックメモ</h1>
       <div class="actions">
         <span id="status" aria-live="polite"></span>
+        <button type="button" id="undo-clear" data-testid="undo-clear" hidden>元に戻す</button>
         <button type="button" id="clear">全消去</button>
       </div>
     </header>
@@ -224,7 +234,7 @@
         <dt>別の端末やブラウザと同期されますか？</dt>
         <dd>されません。保存はこの端末のこのブラウザだけです。</dd>
         <dt>全消去したメモは戻せますか？</dt>
-        <dd>戻せません。消す前に、必要な内容を控えてください。</dd>
+        <dd>全消去の直後なら「元に戻す」で復元できます。リロードしたあとや、次の入力を始めると戻せません。</dd>
       </dl>
     </section>
   </div>
@@ -239,6 +249,7 @@
       var statusEl = document.getElementById("status");
       var storageOk = true;
       var statusTimer = null;
+      var undo = { value: null, btn: document.getElementById("undo-clear") };
 
       function showSaved() {
         if (!storageOk) return;
@@ -271,7 +282,16 @@
         note.focus();
       }
 
+      function discardUndo() {
+        undo.value = null;
+        undo.btn.hidden = true;
+      }
+
       function clearNote() {
+        if (note.value) {
+          undo.value = note.value;
+          undo.btn.hidden = false;
+        }
         note.value = "";
         try {
           localStorage.removeItem(STORAGE_KEY);
@@ -289,8 +309,20 @@
         note.focus();
       }
 
-      note.addEventListener("input", saveNote);
+      function undoClear() {
+        if (undo.value === null) return;
+        note.value = undo.value;
+        saveNote();
+        discardUndo();
+        note.focus();
+      }
+
+      note.addEventListener("input", function () {
+        discardUndo();
+        saveNote();
+      });
       clearBtn.addEventListener("click", clearNote);
+      undo.btn.addEventListener("click", undoClear);
 
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", restoreNote);

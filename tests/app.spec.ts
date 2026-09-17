@@ -1,9 +1,21 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { pathToFileURL } from "node:url";
 
 // 静的アプリなのでサーバ不要。kojo の visualGate と同じ file:// 方式で開く
 const APP_URL = pathToFileURL("public/index.html").href;
 const STORAGE_KEY = "quick-notes:content";
+
+function uniqueNote(label: string) {
+  return `${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function storageGet(page: Page) {
+  return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+}
+
+async function storageKeyCount(page: Page) {
+  return page.evaluate(() => localStorage.length);
+}
 
 test("ページがロードできページエラーが出ない", async ({ page }) => {
   const errors: string[] = [];
@@ -58,6 +70,93 @@ test("AC5: 全消去後のリロードでも内容は復活しない", async ({ 
   await page.getByRole("button", { name: "全消去" }).click();
   await page.reload();
   await expect(page.locator("textarea")).toHaveValue("");
+});
+
+test("元に戻す AC1: 非空メモを全消去すると元に戻すボタンが出る", async ({ page }) => {
+  await page.goto(APP_URL);
+  const note = uniqueNote("消される前の内容");
+  await page.locator("#note").fill(note);
+  await page.locator("#clear").click();
+
+  await expect(page.locator("#note")).toHaveValue("");
+  expect(await storageGet(page)).toBeNull();
+  const undo = page.getByTestId("undo-clear");
+  await expect(undo).toBeVisible();
+  await expect(undo).toHaveRole("button");
+  await expect(undo).toHaveText("元に戻す");
+});
+
+test("元に戻す AC2: 元に戻すを押すと消す前の内容が復元される", async ({ page }) => {
+  await page.goto(APP_URL);
+  const note = uniqueNote("消される前の内容");
+  await page.locator("#note").fill(note);
+  await page.locator("#clear").click();
+  await page.getByTestId("undo-clear").click();
+
+  await expect(page.locator("#note")).toHaveValue(note);
+  expect(await storageGet(page)).toBe(note);
+  await expect(page.getByTestId("undo-clear")).toBeHidden();
+});
+
+test("元に戻す AC3: 全消去直後のリロードでは元に戻すを持ち越さない", async ({ page }) => {
+  await page.goto(APP_URL);
+  await page.locator("#note").fill(uniqueNote("消してリロード"));
+  await page.locator("#clear").click();
+
+  await expect(page.locator("#note")).toHaveValue("");
+  expect(await storageGet(page)).toBeNull();
+  const keysAfterClear = await storageKeyCount(page);
+
+  await page.reload();
+
+  await expect(page.locator("#note")).toHaveValue("");
+  expect(await storageGet(page)).toBeNull();
+  const undo = page.getByTestId("undo-clear");
+  await expect(undo).toBeAttached();
+  await expect(undo).toBeHidden();
+  expect(await storageKeyCount(page)).toBeLessThanOrEqual(keysAfterClear);
+});
+
+test("元に戻す AC4: 全消去後の入力と空欄の全消去では退避を壊さない", async ({ page }) => {
+  await page.goto(APP_URL);
+  const original = uniqueNote("消される前の内容");
+  await page.locator("#note").fill(original);
+  await page.locator("#clear").click();
+  await expect(page.getByTestId("undo-clear")).toBeVisible();
+  await page.locator("#note").fill("x");
+  await expect(page.getByTestId("undo-clear")).toBeHidden();
+  await expect(page.locator("#note")).toHaveValue("x");
+  expect(await storageGet(page)).toBe("x");
+
+  await page.goto(APP_URL);
+  await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEY);
+  await page.reload();
+  await expect(page.locator("#note")).toHaveValue("");
+  await page.locator("#clear").click();
+  await expect(page.getByTestId("undo-clear")).toBeAttached();
+  await expect(page.getByTestId("undo-clear")).toBeHidden();
+
+  await page.locator("#note").fill(original);
+  await page.locator("#clear").click();
+  await expect(page.getByTestId("undo-clear")).toBeVisible();
+  await page.locator("#clear").click();
+  await page.getByTestId("undo-clear").click();
+  await expect(page.locator("#note")).toHaveValue(original);
+});
+
+test("元に戻す AC5: 全消去のラベルとステータスと FAQ 案内を維持する", async ({ page }) => {
+  await page.goto(APP_URL);
+  const clear = page.locator("#clear");
+  await expect(clear).toHaveText("全消去");
+  await page.locator("#note").fill(uniqueNote("ステータス確認"));
+  await expect(page.locator("#status")).toHaveText("保存済み");
+  await clear.click();
+  await expect(page.locator("#status")).toHaveText("消去済み");
+
+  const faq = page.locator("#faq");
+  await expect(faq.getByText("全消去したメモは戻せますか？")).toBeVisible();
+  await expect(faq).toContainText("全消去の直後");
+  await expect(faq).toContainText("元に戻す");
 });
 
 test("SEO: meta description があり空でない", async ({ page }) => {
